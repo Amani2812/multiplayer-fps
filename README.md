@@ -213,13 +213,7 @@ Beyond the core brief, this project also includes:
 - Full documentation across the shared crate explaining every type and its purpose
 - A Dockerized server, requiring no Rust installation at all to host a match
 
----
 
-## 👤 Author
-
-**Ibraheem Youssef** ([@IbsYoussef](https://github.com/IbsYoussef))
-
----
 
 ## 📄 License
 
