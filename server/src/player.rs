@@ -5,12 +5,17 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 
 use crate::config::FUEL_MAX;
 
 // every connected player, keyed by the network address they are sending from
 pub type Players = Arc<Mutex<HashMap<SocketAddr, Player>>>;
+
+// the locked form of Players, held for the duration of one tick or one
+// incoming packet. Named here once so the game-tick functions that pass
+// it around don't each have to spell out the full generic signature.
+pub type PlayersGuard<'a> = MutexGuard<'a, HashMap<SocketAddr, Player>>;
 
 #[derive(Debug)]
 pub struct Player {
@@ -30,10 +35,7 @@ pub struct Player {
     // input flags, set by the listener task and read by the game tick task
     pub input_forward: bool,
     pub input_backward: bool,
-    pub input_turn_left: bool,
-    pub input_turn_right: bool,
     pub input_shoot: bool,
-    pub just_shot: bool,
     pub last_shot_at: Option<Instant>,
 
     pub username: String,
@@ -146,10 +148,7 @@ impl Player {
             rate_window_start: Instant::now(),
             input_forward: false,
             input_backward: false,
-            input_turn_left: false,
-            input_turn_right: false,
             input_shoot: false,
-            just_shot: false,
             last_shot_at: None,
             username: String::new(),
         }

@@ -77,6 +77,10 @@ pub fn net_thread(
     let mut seq = 0u32;
     let mut buf = vec![0u8; MAX_PACKET_BYTES];
 
+    // left at 0 until the server hands us a real one in its first
+    // StatePacket reply, see the recv loop below
+    let mut session_token: u64 = 0;
+
     // shot events are transient, they only exist for one server tick, so we
     // must never lose one to a full channel. This buffer holds any events
     // that could not be sent yet and keeps trying until they get through.
@@ -94,12 +98,9 @@ pub fn net_thread(
 
         let pkt = InputPacket {
             sequence: seq,
-            player_id: 0,
-            session_token: 0,
+            session_token,
             forward: input.forward.load(Ordering::Relaxed),
             backward: input.backward.load(Ordering::Relaxed),
-            turn_left: false, // no longer used, the angle field carries turning now
-            turn_right: false,
             shoot: input.shoot.load(Ordering::Relaxed),
             angle: f32::from_bits(input.angle_bits.load(Ordering::Relaxed)),
             // do not claim a position until we have adopted our server spawn,
@@ -139,6 +140,7 @@ pub fn net_thread(
         let mut newest: Option<StatePacket> = None;
         while let Ok(len) = socket.recv(&mut buf) {
             if let Ok(state) = postcard::from_bytes::<StatePacket>(&buf[..len]) {
+                session_token = state.session_token;
                 pending_events.extend(state.shot_events.iter().cloned());
                 newest = Some(state);
             }

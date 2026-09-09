@@ -67,6 +67,7 @@ pub async fn broadcast(
             let state = StatePacket {
                 sequence,
                 your_id: player.id,
+                session_token: player.session_token,
                 players: player_list.clone(),
                 match_over,
                 winner_id,

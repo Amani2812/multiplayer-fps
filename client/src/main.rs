@@ -141,7 +141,7 @@ async fn main() {
         // snap to wherever it says we are every frame while dead
         let mut respawning = false;
         if let Some(state) = &last_state {
-            if let Some(me) = state.players.iter().find(|p| p.id == state.your_id) {
+            if let Some(me) = state.me() {
                 if me.respawning {
                     respawning = true;
                     player.x = me.x;
@@ -201,7 +201,7 @@ async fn main() {
         // assigned us, instead of the placeholder position we started at
         if !spawned {
             if let Some(state) = &last_state {
-                if let Some(me) = state.players.iter().find(|p| p.id == state.your_id) {
+                if let Some(me) = state.me() {
                     player.x = me.x;
                     player.z = me.y;
                     player.yaw = me.angle;
@@ -237,13 +237,8 @@ async fn main() {
         );
 
         if let Some(state) = &last_state {
-            if let Some(me) = state.players.iter().find(|p| p.id == state.your_id) {
-                let name = if me.username.is_empty() {
-                    format!("P{}", me.id)
-                } else {
-                    me.username.clone()
-                };
-                draw_text(&name, 12.0, 30.0, 24.0, YELLOW);
+            if let Some(me) = state.me() {
+                draw_text(&me.display_name(), 12.0, 30.0, 24.0, YELLOW);
             }
         }
 
@@ -265,7 +260,7 @@ async fn main() {
         }
 
         if let Some(state) = &last_state {
-            if let Some(me) = state.players.iter().find(|p| p.id == state.your_id) {
+            if let Some(me) = state.me() {
                 let fuel_color = if me.fuel < 25.0 { RED } else { WHITE };
                 draw_text(
                     &format!("FUEL: {:.0}", me.fuel),

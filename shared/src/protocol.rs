@@ -42,20 +42,14 @@ pub struct InputPacket {
     /// increases by one with every packet sent, lets the server tell
     /// packets apart and discard any that arrive out of order
     pub sequence: u32,
-    /// not currently used, reserved for a future use where the client
-    /// might need to identify itself before the server has assigned it
-    /// a proper id
-    pub player_id: u32,
-    /// a value the server hands the client once it registers, used to
-    /// confirm later packets really are coming from that same player
+    /// the token the server assigned this player in its last StatePacket
+    /// (see StatePacket::session_token below), echoed back so the server
+    /// can confirm later packets really are coming from that same
+    /// player. Left at 0 on the very first packet a client ever sends,
+    /// since it cannot know its token before the server has assigned one
     pub session_token: u64,
     pub forward: bool,
     pub backward: bool,
-    /// no longer used for turning, the client turns using `angle`
-    /// below instead, kept here so older packets still deserialise
-    /// correctly rather than for any active purpose
-    pub turn_left: bool,
-    pub turn_right: bool,
     pub shoot: bool,
     /// the direction the player is currently facing, in radians
     pub angle: f32,
@@ -92,6 +86,12 @@ pub struct StatePacket {
     /// below is themself, since every client receives the same list of
     /// every connected player
     pub your_id: u32,
+    /// the token this specific recipient must echo back in every
+    /// InputPacket from now on, so the server can confirm later packets
+    /// claiming to be this player really are coming from them. Every
+    /// client gets its own StatePacket with its own token here, since
+    /// this is the only channel the server has to hand it out
+    pub session_token: u64,
     /// every currently connected player, including the receiving
     /// client's own player
     pub players: Vec<PlayerState>,
@@ -110,6 +110,16 @@ pub struct StatePacket {
     /// client uses this to make sure it is drawing the exact same maze
     /// layout the server is using for collision checks
     pub level: u8,
+}
+
+impl StatePacket {
+    /// Finds the receiving client's own entry in `players`, by matching
+    /// `your_id`. Every client needs this constantly (their own position,
+    /// fuel, respawn state, kill count), so it lives here once instead of
+    /// being repeated at every call site.
+    pub fn me(&self) -> Option<&PlayerState> {
+        self.players.iter().find(|p| p.id == self.your_id)
+    }
 }
 
 /// One player's current state, as seen from the server. This is what
@@ -132,6 +142,19 @@ pub struct PlayerState {
     /// window rather than showing them standing still
     pub respawning: bool,
     pub username: String,
+}
+
+impl PlayerState {
+    /// The name to show for this player: their chosen username, or a
+    /// `P{id}` placeholder for the brief window before the server has
+    /// heard it, or if it was left empty.
+    pub fn display_name(&self) -> String {
+        if self.username.is_empty() {
+            format!("P{}", self.id)
+        } else {
+            self.username.clone()
+        }
+    }
 }
 
 /// One shot that was fired and resolved during a single game tick.

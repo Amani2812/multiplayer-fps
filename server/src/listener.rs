@@ -51,8 +51,12 @@ pub async fn udp_listener(
 
         let mut players = players.lock().await;
 
-        // register a brand new player the first time we hear from them
-        if !players.contains_key(&src) {
+        // register a brand new player the first time we hear from them.
+        // remembered so the session token check below can exempt this
+        // player's very first packet, the only one where they cannot
+        // possibly know their assigned token yet
+        let is_new_player = !players.contains_key(&src);
+        if is_new_player {
             let token = src.port() as u64 ^ next_id as u64 ^ 0xdeadbeefcafe;
             let occupied: Vec<(f32, f32)> = players.values().map(|p| (p.x, p.y)).collect();
             tracing::info!("new player {} from {}", next_id, src);
@@ -75,6 +79,18 @@ pub async fn udp_listener(
 
         let player = players.get_mut(&src).unwrap();
 
+        // reject a packet claiming the wrong session token for this
+        // player, checked before anything else so a spoofed packet can't
+        // consume this player's rate-limit budget or overwrite their
+        // username. A brand new player's very first packet is exempt,
+        // since the server has not had a chance to hand back its
+        // assigned token yet (see StatePacket::session_token), every
+        // packet after that must match exactly, 0 included
+        if !is_new_player && packet.session_token != player.session_token {
+            tracing::warn!("bad session token from {src}, dropping");
+            continue;
+        }
+
         // the client sends its username once, on its very first packet
         if !packet.username.is_empty() && player.username.is_empty() {
             player.username = packet.username.clone();
@@ -93,12 +109,6 @@ pub async fn udp_listener(
             continue;
         }
 
-        // reject a packet claiming the wrong session token for this player
-        if packet.session_token != 0 && packet.session_token != player.session_token {
-            tracing::warn!("bad session token from {src}, dropping");
-            continue;
-        }
-
         // discard any packet that arrived out of order
         if packet.sequence <= player.last_sequence {
             continue;
@@ -109,8 +119,6 @@ pub async fn udp_listener(
         // store the input flags, the game tick task applies movement from these
         player.input_forward = packet.forward;
         player.input_backward = packet.backward;
-        player.input_turn_left = packet.turn_left;
-        player.input_turn_right = packet.turn_right;
         player.input_shoot = packet.shoot;
 
         // The client reports its own position and view angle.

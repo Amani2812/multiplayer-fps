@@ -55,11 +55,7 @@ pub fn draw_minimap(map: &shared::map::Map, player: &LocalPlayer, state: &Option
 // Shortens a player's name if it is unusually long, so the scoreboard
 // panel can never grow wide enough to break the layout.
 fn display_name(p: &PlayerState) -> String {
-    let name = if p.username.is_empty() {
-        format!("P{}", p.id)
-    } else {
-        p.username.clone()
-    };
+    let name = p.display_name();
     if name.chars().count() > 12 {
         format!("{}...", name.chars().take(12).collect::<String>())
     } else {

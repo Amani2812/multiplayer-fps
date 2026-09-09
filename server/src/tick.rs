@@ -12,7 +12,7 @@ use crate::config::{
     FUEL_DRAIN, MatchState, OpenCells, PLAYER_SPEED, RESPAWN_SECS, SHOOT_COOLDOWN_MS, SHOOT_RANGE,
     SHOOT_WIDTH, ShotEvents, TICK_MS, TIMEOUT_SECS, WIN_DISPLAY_SECS,
 };
-use crate::player::{Players, spawn_pos};
+use crate::player::{Players, PlayersGuard, spawn_pos};
 
 pub async fn game_tick(
     players: Players,
@@ -47,10 +47,7 @@ pub async fn game_tick(
 // a hit or miss. Every shot, hit or not, is recorded as a ShotEvent so
 // clients can show the cosmetic flying projectile even on a miss.
 async fn resolve_shots(
-    players: &mut tokio::sync::MutexGuard<
-        '_,
-        std::collections::HashMap<std::net::SocketAddr, crate::player::Player>,
-    >,
+    players: &mut PlayersGuard<'_>,
     map: &shared::map::Map,
     open: &OpenCells,
     shot_events_shared: &ShotEvents,
@@ -134,10 +131,7 @@ async fn resolve_shots(
 // Splitting hit application out keeps resolve_shots focused on finding
 // hits, this part just carries out the consequences.
 async fn apply_hits(
-    players: &mut tokio::sync::MutexGuard<
-        '_,
-        std::collections::HashMap<std::net::SocketAddr, crate::player::Player>,
-    >,
+    players: &mut PlayersGuard<'_>,
     map: &shared::map::Map,
     open: &OpenCells,
     hits: &[(u32, u32)],
@@ -174,10 +168,7 @@ async fn apply_hits(
 // limit. The actual match reset is delayed (see reset_match_if_display_time_elapsed)
 // so the win screen has time to show before scores are cleared.
 async fn apply_hits_and_check_winner(
-    players: &mut tokio::sync::MutexGuard<
-        '_,
-        std::collections::HashMap<std::net::SocketAddr, crate::player::Player>,
-    >,
+    players: &mut PlayersGuard<'_>,
     match_state: &MatchState,
 ) {
     let winner_id = players
@@ -197,10 +188,7 @@ async fn apply_hits_and_check_winner(
 // Once the win screen has been showing for WIN_DISPLAY_SECS, reset every
 // player's kills to zero and give them a fresh spawn point for the new match.
 async fn reset_match_if_display_time_elapsed(
-    players: &mut tokio::sync::MutexGuard<
-        '_,
-        std::collections::HashMap<std::net::SocketAddr, crate::player::Player>,
-    >,
+    players: &mut PlayersGuard<'_>,
     map: &shared::map::Map,
     open: &OpenCells,
     match_state: &MatchState,
@@ -229,16 +217,11 @@ async fn reset_match_if_display_time_elapsed(
 // Applies movement from input flags, drains fuel, and handles the
 // transition into and out of the respawn freeze.
 fn apply_movement_fuel_and_respawn(
-    players: &mut tokio::sync::MutexGuard<
-        '_,
-        std::collections::HashMap<std::net::SocketAddr, crate::player::Player>,
-    >,
+    players: &mut PlayersGuard<'_>,
     map: &shared::map::Map,
     open: &OpenCells,
 ) {
     for player in players.values_mut() {
-        player.just_shot = player.input_shoot;
-
         // still frozen from a death, check if the freeze has expired
         if let Some(at) = player.respawn_at {
             if Instant::now() >= at {

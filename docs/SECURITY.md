@@ -80,9 +80,9 @@ match bincode::deserialize::<InputPacket>(&buf[..len]) {
 ## Implementation Checklist
 
 ```
-[ ] session_token field added to InputPacket in shared/protocol.rs
-[ ] Server issues random session_token on first valid packet from new SocketAddr
-[ ] Server validates session_token on every subsequent packet from that SocketAddr
+[x] session_token field added to InputPacket in shared/protocol.rs
+[x] Server issues random session_token on first valid packet from new SocketAddr
+[x] Server validates session_token on every subsequent packet from that SocketAddr
 [ ] Sequence numbers start at a random offset per session
 [ ] Rate limiter: drop if > 128 packets/sec from one SocketAddr
 [ ] MAX_PACKET_BYTES constant defined in shared; checked before deserializing
