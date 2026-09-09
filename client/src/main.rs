@@ -15,6 +15,7 @@ mod render;
 
 use macroquad::prelude::*;
 use std::collections::HashMap;
+use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc;
@@ -42,9 +43,24 @@ fn prompt_input(label: &str) -> String {
     input.trim().to_string()
 }
 
+// Keeps re-prompting until the player enters something that actually
+// resolves to a socket address (host:port). Without this, a bad address
+// (missing port, typo, etc.) would only surface later as a raw panic in
+// the background network thread (see net.rs's UdpSocket::connect), which
+// kills that thread silently while the window is still open and stuck.
+fn prompt_server_addr() -> String {
+    loop {
+        let addr = prompt_input("Enter IP Address: ");
+        if addr.to_socket_addrs().is_ok() {
+            return addr;
+        }
+        println!("'{addr}' isn't a valid address, expected host:port, e.g. 127.0.0.1:34254");
+    }
+}
+
 #[macroquad::main("Maze Runner FPS")]
 async fn main() {
-    let server_addr = prompt_input("Enter IP Address: ");
+    let server_addr = prompt_server_addr();
     let username = prompt_input("Enter Name: ");
     println!("Starting...");
 
