@@ -139,13 +139,6 @@ Three levels are available, each a fixed 16x16 maze of increasing difficulty, mo
 
 ---
 
-## ⚠️ Known Limitations
-
-Mouse look is confirmed working smoothly on native Windows and native Linux.
-
-Under WSL specifically (Windows Subsystem for Linux), the underlying display system, WSLg, does not reliably deliver raw mouse motion to the game, this is a limitation of that specific environment rather than the game itself. The arrow keys are provided as a reliable fallback for turning in that case.
-
----
 
 ## 🗂️ Project Structure
 
